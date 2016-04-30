@@ -102,17 +102,6 @@
 #  endif
 #endif
 
-/* OLED display definitions *************************************************/
-
-#ifdef CONFIG_LCD_SSD1351
-#  define GPIO_OLED_RESET (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
-                           GPIO_OUTPUT_CLEAR|GPIO_PORTB|GPIO_PIN5)
-#  define GPIO_OLED_CS    (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
-                           GPIO_OUTPUT_SET|GPIO_PORTA|GPIO_PIN8)
-#  define GPIO_OLED_DC    (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
-                           GPIO_OUTPUT_CLEAR|GPIO_PORTA|GPIO_PIN9)
-#endif
-
 /****************************************************************************
  * Public Data
  ****************************************************************************/
@@ -133,24 +122,4 @@
 void weak_function stm32_spidev_initialize(void);
 #endif
 
-/****************************************************************************
- * Name: stm32_timer_driver_setup
- *
- * Description:
- *   Configure the timer driver.
- *
- * Input Parameters:
- *   devpath - The full path to the timer device.  This should be of the form /dev/timer0
- *   timer   - The timer's number.
- *
- * Returned Values:
- *   Zero (OK) is returned on success; A negated errno value is returned
- *   to indicate the nature of any failure.
- *
- ****************************************************************************/
-
-#ifdef CONFIG_TIMER
-int stm32_timer_driver_setup(FAR const char *devpath, int timer);
-#endif
-
-#endif /* __CONFIGS_NUCLEO_F303RE_SRC_NUCLEO_F303RE_H */
+#endif /* __CONFIGS_NUCLEO_F103RB_SRC_NUCLEO_F103RB_H */

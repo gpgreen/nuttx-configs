@@ -1,11 +1,10 @@
-/****************************************************************************
+/************************************************************************************
  * configs/nucleo-f103rb/include/board.h
  * include/arch/board/board.h
  *
  *   Copyright (C) 2013 Gregory Nutt. All rights reserved.
- *   Copyright (C) 2015 Omni Hoverboards Inc. All rights reserved.
  *   Authors: Gregory Nutt <gnutt@nuttx.org>
- *            Paul Alexander Patience <paul-a.patience@polymtl.ca>
+ *            Librae <librae8226@gmail.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,31 +33,28 @@
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- ****************************************************************************/
+ ************************************************************************************/
 
-#ifndef __CONFIG_STM32F103RBNUCLEO_INCLUDE_BOARD_H
-#define __CONFIG_STM32F103RBNUCLEO_INCLUDE_BOARD_H
+#ifndef __CONFIGS_NUCLEOF103RB_INCLUDE_BOARD_H
+#define __CONFIGS_NUCLEOF103RB_INCLUDE_BOARD_H
 
-/****************************************************************************
+/************************************************************************************
  * Included Files
- ****************************************************************************/
+ ************************************************************************************/
 
 #include <nuttx/config.h>
-
 #ifndef __ASSEMBLY__
-#  include <stdint.h>
-#  include <stdbool.h>
+# include <stdint.h>
 #endif
+#include "stm32_rcc.h"
+#include "stm32_sdio.h"
+#include "stm32.h"
 
-#ifdef __KERNEL__
-#  include "stm32.h"
-#endif
-
-/****************************************************************************
+/************************************************************************************
  * Pre-processor Definitions
- ****************************************************************************/
+ ************************************************************************************/
 
-/* Clocking *****************************************************************/
+/* Clocking *************************************************************************/
 
 /* HSI - Internal 8 MHz RC Oscillator
  * LSI - 32 KHz RC
@@ -90,54 +86,74 @@
 
 #define STM32_RCC_CFGR_HPRE     RCC_CFGR_HPRE_SYSCLK
 #define STM32_HCLK_FREQUENCY    STM32_PLL_FREQUENCY
-#define STM32_BOARD_HCLK        STM32_HCLK_FREQUENCY      /* same as above, to satisfy compiler */
+#define STM32_BOARD_HCLK        STM32_HCLK_FREQUENCY    /* same as above, to satisfy compiler */
 
 /* APB2 clock (PCLK2) is HCLK (72MHz) */
 
 #define STM32_RCC_CFGR_PPRE2    RCC_CFGR_PPRE2_HCLK
 #define STM32_PCLK2_FREQUENCY   STM32_HCLK_FREQUENCY
-#define STM32_APB2_CLKIN        (STM32_PCLK2_FREQUENCY)   /* Timers 2-7, 12-14 */
 
-/* APB2 timers 1 and 8 will receive PCLK2. */
+/* APB2 timer 1 will receive PCLK2. */
 
 #define STM32_APB2_TIM1_CLKIN   (STM32_PCLK2_FREQUENCY)
-#define STM32_APB2_TIM8_CLKIN   (STM32_PCLK2_FREQUENCY)
-
-#define STM32_APB1_TIM15_CLKIN  (STM32_PCLK2_FREQUENCY)
-#define STM32_APB1_TIM16_CLKIN  (STM32_PCLK2_FREQUENCY)
-#define STM32_APB1_TIM17_CLKIN  (STM32_PCLK2_FREQUENCY)
+/*#define STM32_APB2_TIM8_CLKIN   (STM32_PCLK2_FREQUENCY)*/
 
 /* APB1 clock (PCLK1) is HCLK/2 (36MHz) */
 
 #define STM32_RCC_CFGR_PPRE1    RCC_CFGR_PPRE1_HCLKd2
 #define STM32_PCLK1_FREQUENCY   (STM32_HCLK_FREQUENCY/2)
 
-/* APB1 timers 2-4 will be twice PCLK1 (REVISIT) */
+/* APB1 timers 2-4 will be twice PCLK1 (I presume the remaining will receive PCLK1) */
 
 #define STM32_APB1_TIM2_CLKIN   (2*STM32_PCLK1_FREQUENCY)
 #define STM32_APB1_TIM3_CLKIN   (2*STM32_PCLK1_FREQUENCY)
 #define STM32_APB1_TIM4_CLKIN   (2*STM32_PCLK1_FREQUENCY)
+/*#define STM32_APB1_TIM5_CLKIN   (STM32_PCLK1_FREQUENCY)
 #define STM32_APB1_TIM6_CLKIN   (STM32_PCLK1_FREQUENCY)
-#define STM32_APB1_TIM7_CLKIN   (STM32_PCLK1_FREQUENCY)
+#define STM32_APB1_TIM7_CLKIN   (STM32_PCLK1_FREQUENCY)*/
 
 /* USB divider -- Divide PLL clock by 1.5 */
 
 #define STM32_CFGR_USBPRE       0
 
-/* Timers driven from APB1 will be twice PCLK1 */
+/* Timer Frequencies, if APBx is set to 1, frequency is same to APBx
+ * otherwise frequency is 2xAPBx.
+ * Note: TIM1,8 are on APB2, others on APB1 */
 
-#define STM32_APB1_TIM2_CLKIN   (2*STM32_PCLK1_FREQUENCY)
-#define STM32_APB1_TIM3_CLKIN   (2*STM32_PCLK1_FREQUENCY)
-#define STM32_APB1_TIM4_CLKIN   (2*STM32_PCLK1_FREQUENCY)
+#define STM32_TIM18_FREQUENCY   STM32_HCLK_FREQUENCY
+#define STM32_TIM27_FREQUENCY   STM32_HCLK_FREQUENCY
 
-/* APB2 clock (PCLK2) is HCLK/2 (84MHz) */
+/* SDIO dividers.  Note that slower clocking is required when DMA is disabled
+ * in order to avoid RX overrun/TX underrun errors due to delayed responses
+ * to service FIFOs in interrupt driven mode.  These values have not been
+ * tuned!!!
+ *
+ * HCLK=72MHz, SDIOCLK=72MHz, SDIO_CK=HCLK/(178+2)=400 KHz
+ */
 
-#define STM32_RCC_CFGR_PPRE2    RCC_CFGR_PPRE2_HCLKd2     /* PCLK2 = HCLK / 2 */
-#define STM32_PCLK2_FREQUENCY   (STM32_HCLK_FREQUENCY/2)
+#define SDIO_INIT_CLKDIV        (178 << SDIO_CLKCR_CLKDIV_SHIFT)
 
-/* Timers driven from APB2 will receive PCLK2 */
+/* DMA ON:  HCLK=72 MHz, SDIOCLK=72MHz, SDIO_CK=HCLK/(2+2)=18 MHz
+ * DMA OFF: HCLK=72 MHz, SDIOCLK=72MHz, SDIO_CK=HCLK/(3+2)=14.4 MHz
+ */
 
-#define STM32_APB2_TIM1_CLKIN   STM32_PCLK2_FREQUENCY
+#ifdef CONFIG_SDIO_DMA
+#  define SDIO_MMCXFR_CLKDIV    (2 << SDIO_CLKCR_CLKDIV_SHIFT)
+#else
+#  define SDIO_MMCXFR_CLKDIV    (3 << SDIO_CLKCR_CLKDIV_SHIFT)
+#endif
+
+/* DMA ON:  HCLK=72 MHz, SDIOCLK=72MHz, SDIO_CK=HCLK/(1+2)=24 MHz
+ * DMA OFF: HCLK=72 MHz, SDIOCLK=72MHz, SDIO_CK=HCLK/(3+2)=14.4 MHz
+ */
+
+#ifdef CONFIG_SDIO_DMA
+#  define SDIO_SDXFR_CLKDIV     (1 << SDIO_CLKCR_CLKDIV_SHIFT)
+#else
+#  define SDIO_SDXFR_CLKDIV     (3 << SDIO_CLKCR_CLKDIV_SHIFT)
+#endif
+
+/* LED definitions ******************************************************************/
 
 /* LED definitions **********************************************************/
 /* The Nucleo F103RB board has three LEDs.  Two of these are controlled by
@@ -149,13 +165,11 @@
  * LD3 PWR:  red LED indicates that the board is powered.
  *
  * And one can be controlled by software:
- *
  * User LD2: green LED is a user LED connected to the I/O PA5 of the
  *           STM32F103RBT6.
  *
  * If CONFIG_ARCH_LEDS is not defined, then the user can control the LED in
  * any way.  The following definition is used to access the LED.
- */
 
 /* LED index values for use with board_userled() */
 
@@ -163,7 +177,6 @@
 #define BOARD_NLEDS      1
 
 /* LED bits for use with board_userled_all() */
-
 #define BOARD_LED1_BIT   (1 << BOARD_LED1)
 
 /* If CONFIG_ARCH_LEDs is defined, then NuttX will control the LED on board
@@ -182,7 +195,7 @@
  *   LED_PANIC           The system has crashed   Blinking
  *   LED_IDLE            STM32 is is sleep mode   Not used
  */
-
+    
 #define LED_STARTED      0
 #define LED_HEAPALLOCATE 0
 #define LED_IRQSENABLED  0
@@ -206,37 +219,39 @@
 
 #define BUTTON_USER_BIT  (1 << BUTTON_USER)
 
-/****************************************************************************
+/************************************************************************************
  * Public Data
- ****************************************************************************/
+ ************************************************************************************/
 
 #ifndef __ASSEMBLY__
 
-#ifdef __cplusplus
-extern "C"
-{
+#undef EXTERN
+#if defined(__cplusplus)
+#define EXTERN extern "C"
+extern "C" {
+#else
+#define EXTERN extern
 #endif
 
-/****************************************************************************
+/************************************************************************************
  * Public Function Prototypes
- ****************************************************************************/
-
-/****************************************************************************
+ ************************************************************************************/
+/************************************************************************************
  * Name: stm32_boardinitialize
  *
  * Description:
- *   All STM32 architectures must provide the following entry point.  This
- *   entry point is called early in the initialization -- after all memory
- *   has been configured and mapped but before any devices have been
- *   initialized.
+ *   All STM32 architectures must provide the following entry point.  This entry point
+ *   is called early in the initialization -- after all memory has been configured
+ *   and mapped but before any devices have been initialized.
  *
- ****************************************************************************/
+ ************************************************************************************/
 
 void stm32_boardinitialize(void);
 
-#ifdef __cplusplus
+#undef EXTERN
+#if defined(__cplusplus)
 }
 #endif
 
 #endif /* __ASSEMBLY__ */
-#endif /* __CONFIG_NUCLEO_F103RB_INCLUDE_BOARD_H */
+#endif  /* __CONFIGS_NUCLEOF103RB_INCLUDE_BOARD_H */
