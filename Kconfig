@@ -1693,6 +1693,9 @@ endif
 if ARCH_BOARD_PIRELLI_DPL10
 source "configs/pirelli_dpl10/Kconfig"
 endif
+if ARCH_BOARD_NUCLEO_F103RB
+source "configs/nucleo-f103rb/Kconfig"
+endif
 if ARCH_BOARD_NUCLEO_F303RE
 source "configs/nucleo-f303re/Kconfig"
 endif
