@@ -58,23 +58,26 @@
 
 /* HSI - Internal 8 MHz RC Oscillator
  * LSI - 32 KHz RC
- * HSE - On-board crystal frequency is 8MHz
+ * HSE - st-link provides clock 8MHz
  * LSE - 32.768 kHz
  */
 
-#define STM32_BOARD_XTAL        8000000ul        /* X1 on board */
+#define STM32_VLINK_CLOCK       8000000ul
 
 #define STM32_HSI_FREQUENCY     8000000ul
 #define STM32_LSI_FREQUENCY     40000            /* Between 30kHz and 60kHz */
-#define STM32_HSE_FREQUENCY     STM32_BOARD_XTAL
+#define STM32_HSE_FREQUENCY     STM32_VLINK_CLOCK
 #define STM32_LSE_FREQUENCY     32768            /* X2 on board */
+
+/* HSE source is st-link */
+#define STM32_CFGR_HSEBYPASS    1
 
 /* PLL source is HSE/1, PLL multipler is 9: PLL frequency is 8MHz (XTAL) x 9 = 72MHz */
 
 #define STM32_CFGR_PLLSRC       RCC_CFGR_PLLSRC
 #define STM32_CFGR_PLLXTPRE     0
 #define STM32_CFGR_PLLMUL       RCC_CFGR_PLLMUL_CLKx9
-#define STM32_PLL_FREQUENCY     (9*STM32_BOARD_XTAL)
+#define STM32_PLL_FREQUENCY     (9*STM32_VLINK_CLOCK)
 
 /* Use the PLL and set the SYSCLK source to be the PLL */
 
