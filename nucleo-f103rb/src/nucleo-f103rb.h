@@ -66,7 +66,7 @@
  * any way.  The following definition is used to access the LED.
  */
 
-#define GPIO_LED1      (GPIO_CNF_OUTPP|GPIO_MODE_50MHz|\
+#define GPIO_LED1      (GPIO_OUTPUT|GPIO_CNF_OUTPP|GPIO_MODE_50MHz|\
                         GPIO_OUTPUT_CLEAR|GPIO_PORTA|GPIO_PIN5)
 
 /* Button definitions *******************************************************/

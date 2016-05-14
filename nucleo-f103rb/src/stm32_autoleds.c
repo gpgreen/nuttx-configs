@@ -102,7 +102,7 @@ void board_autoled_initialize(void)
 
 void board_autoled_on(int led)
 {
-  if (led == BOARD_LED1)
+  if (led == LED_PANIC)
     {
       stm32_gpiowrite(GPIO_LED1, true);
     }
@@ -114,7 +114,7 @@ void board_autoled_on(int led)
 
 void board_autoled_off(int led)
 {
-  if (led == BOARD_LED1)
+  if (led == LED_PANIC)
     {
       stm32_gpiowrite(GPIO_LED1, false);
     }
