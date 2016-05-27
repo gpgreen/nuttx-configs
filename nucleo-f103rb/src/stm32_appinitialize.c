@@ -44,10 +44,17 @@
 #include <sys/types.h>
 
 #include <nuttx/board.h>
+#include <nuttx/lcd/hd44780u.h>
+#include <arch/board/board.h>
+
+#include "nucleo-f103rb.h"
 
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
+#ifndef OK
+#  define OK 0
+#endif
 
 /****************************************************************************
  * Public Functions
@@ -65,19 +72,19 @@
 
 int board_app_initialize(void)
 {
-  /* Configure on-board LEDs if LED support has been selected. */
+    int ret = OK;
+    
+    /* Configure on-board LEDs if LED support has been selected. */
 
 #ifdef CONFIG_ARCH_LEDS
-  board_autoled_initialize();
+    board_autoled_initialize();
 #endif
 
-  /* Configure SPI chip selects if 1) SPI is not disabled, and 2) the weak function
-   * stm32_spidev_initialize() has been brought into the link.
-   */
-
-#if defined(CONFIG_STM32_SPI1) || defined(CONFIG_STM32_SPI2)
-  stm32_spidev_initialize();
+    /* Initialize the LCD1602 and register the device as /dev/lcd1602 */
+    
+#ifdef CONFIG_LCD_LCD1602
+    ret = up_lcd1602_initialize();
 #endif
 
-  return OK;
+    return OK;
 }

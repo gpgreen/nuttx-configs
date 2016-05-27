@@ -78,4 +78,8 @@ ifeq ($(CONFIG_BOARDCTL_UNIQUEID),y)
 CSRCS += stm32_uid.c
 endif
 
+ifeq ($(CONFIG_LCD_LCD1602),y)
+CSRCS += stm32_lcd1602.c
+endif
+
 include $(TOPDIR)/configs/Board.mk
