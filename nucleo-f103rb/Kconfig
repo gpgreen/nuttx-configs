@@ -5,4 +5,10 @@
 
 if ARCH_BOARD_NUCLEO_F103RB
 
+config NUCLEO_F103RB_LCD
+	bool "LCD 1602"
+	depends on LCD
+	select LCD_LCD1602
+	---help---
+		Enable the 2x16 Alphanumeric display
 endif

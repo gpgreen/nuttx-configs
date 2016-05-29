@@ -5,6 +5,7 @@
  * f103rb board.  The LCD1602 is based on the Hitachi HD44780U LCD
  * controller
  *
+ *   Copyright (C) 2016 Greg Green. All rights reserved.
  *   Copyright (C) 2013 Gregory Nutt. All rights reserved.
  *   Authors: Gregory Nutt <gnutt@nuttx.org>
  *
@@ -40,25 +41,25 @@
 /* LCD pin mapping (see configs/nucleo-f103rb/README.txt)
  *
  *  ----------------------------------- ---------- ----------------------------------
- *  stm32                               LCD1602    PCBLogic PIN
+ *  stm32                               LCD1602    PCBLogic PIN on CN7
  *  PIN  SIGNAL NAME                    PIN NAME(s)
  *  ----------------------------------- ---------- ----------------------------------
  *                                      1.  Vss    --> Powerpoint GND
  *                                      2.  Vdd    --> Powerpoint USB+5V
- *                                      3.  Vo     N/C To ground via 10K potentiometer
- *   26  PB0/ADC12_IN8/TIM3_CH3         4.  RS       4 PMA0, Selects registers
- *   20  PA4/SPI1_NSS/USART2_CK         5.  RW      82 PMRD/PMWR, Selects read or write
- *   15  PA1/USART2_RTS/ADC12_IN1       6.  E       81 PMENB, Starts data read/write
- *    8  PC0                            7.  D0      93 PMD0
- *    9  PC1                            8.  D1      94 PMD1
- *   10  PC2                            9.  D2      98 PMD2
- *   11  PC3                            10. D3      99 PMD3
- *   24  PC4                            11. D4     100 PMD4
- *   25  PC5                            12. D5       3 PMD5
- *   37  PC6                            13. D6       4 PMD6
- *   38  PC7                            14. D7       5 PMD7
- *                                      15. A      N/C To Vcc (5V) via 10K potentiometer
- *                                      16. K      --> Powerpoint GND
+ *                                      3.  Vo     N/C To ground via 10K potentiometer (Contrast)
+ *   26  PB0/ADC12_IN8/TIM3_CH3         4.  RS      34 PB0, Selects registers
+ *   20  PA4/SPI1_NSS/USART2_CK         5.  RW      32 PA4, Selects read or write
+ *   15  PA1/USART2_RTS/ADC12_IN1       6.  E       30 PA1, Starts data read/write
+ *    8  PC0                            7.  N/C
+ *    9  PC1                            8.  N/C
+ *   10  PC2                            9.  N/C
+ *   11  PC3                            10. N/C
+ *                                      11. D4      38 PC0 
+ *                                      12. D5      36 PC1 
+ *                                      13. D6      35 PC2 
+ *                                      14. D7      37 PC3 
+ *                                      15. A      N/C To Vcc (5V) via 10K potentiometer (BKL)
+ *                                      16. K      --> Powerpoint GND (BKL)
  *  ----------------------------------- ---------- ----------------------------------
  */
 
@@ -122,17 +123,17 @@
 #endif
 
 /* Pin configuration ********************************************************/
-/* PB0, RS -- High values selects data */
+/* PC0, RS -- High values selects data */
 
-#define GPIO_LCD_RS   (GPIO_OUTPUT|GPIO_OUTPUT_SET|GPIO_CNF_OUTPP|GPIO_MODE_50MHz|GPIO_PORTB|GPIO_PIN0)
+#define GPIO_LCD_RS   (GPIO_OUTPUT|GPIO_OUTPUT_SET|GPIO_CNF_OUTPP|GPIO_MODE_50MHz|GPIO_PORTC|GPIO_PIN0)
 
-/* PA4, RW -- High values reads data */
+/* PC1, RW -- High values reads data */
 
-#define GPIO_LCD_RW   (GPIO_OUTPUT|GPIO_OUTPUT_SET|GPIO_CNF_OUTPP|GPIO_MODE_50MHz|GPIO_PORTA|GPIO_PIN4)
+#define GPIO_LCD_RW   (GPIO_OUTPUT|GPIO_OUTPUT_SET|GPIO_CNF_OUTPP|GPIO_MODE_50MHz|GPIO_PORTC|GPIO_PIN1)
 
-/* PA1, E -- High values triggers lcd */
+/* PB0, E -- High values triggers lcd */
 
-#define GPIO_LCD_E   (GPIO_OUTPUT|GPIO_OUTPUT_CLEAR|GPIO_CNF_OUTPP|GPIO_MODE_50MHz|GPIO_PORTA|GPIO_PIN1)
+#define GPIO_LCD_E   (GPIO_OUTPUT|GPIO_OUTPUT_CLEAR|GPIO_CNF_OUTPP|GPIO_MODE_50MHz|GPIO_PORTB|GPIO_PIN0)
 
 /* LCD **********************************************************************/
 
@@ -158,18 +159,18 @@
 
 struct lcd_instream_s
 {
-  struct lib_instream_s stream;
-  FAR const char *buffer;
-  ssize_t nbytes;
+    struct lib_instream_s stream;
+    FAR const char *buffer;
+    ssize_t nbytes;
 };
 
 /* Global LCD state */
 
 struct lcd1602_2
 {
-  bool initialized; /* True: Completed initialization sequence */
-  uint8_t currow;   /* Current row */
-  uint8_t curcol;   /* Current column */
+    bool initialized; /* True: Completed initialization sequence */
+    uint8_t currow;   /* Current row */
+    uint8_t curcol;   /* Current column */
 };
 
 /****************************************************************************
@@ -216,14 +217,14 @@ static int lcd_poll(FAR struct file *filep, FAR struct pollfd *fds, bool setup);
 
 static const struct file_operations g_lcdops =
 {
-  0,             /* open */
-  0,             /* close */
-  lcd_read,      /* read */
-  lcd_write,     /* write */
-  0,             /* seek */
-  lcd_ioctl      /* ioctl */
+    0,             /* open */
+    0,             /* close */
+    lcd_read,      /* read */
+    lcd_write,     /* write */
+    0,             /* seek */
+    lcd_ioctl      /* ioctl */
 #ifndef CONFIG_DISABLE_POLL
-  , lcd_poll     /* poll */
+    , lcd_poll     /* poll */
 #endif
 };
 
@@ -240,17 +241,9 @@ static struct lcd1602_2 g_lcd1602;
  ****************************************************************************/
 static void delay(int nsecs)
 {
-    struct timespec req, rem;
-    req.tv_sec = 0;
-    req.tv_nsec = nsecs;
-    while (1) {
-        int retval = nanosleep(&req, &rem);
-        if (!retval)
-            break;
-        if (retval == EINTR)
-            req.tv_nsec = rem.tv_nsec;
-        else
-            PANIC();
+    volatile unsigned int i;
+
+    for (i=0; i<(nsecs*CONFIG_BOARD_LOOPSPERMSEC)/1000; i++) {
     }
 }
 
@@ -261,29 +254,29 @@ static void delay(int nsecs)
 #if defined(CONFIG_DEBUG_LCD) && defined(CONFIG_DEBUG_VERBOSE)
 static void lcd_dumpstate(FAR const char *msg)
 {
-  uint8_t buffer[LCD_NCOLUMNS];
-  uint8_t ch;
-  int row;
-  int column;
+    uint8_t buffer[LCD_NCOLUMNS];
+    uint8_t ch;
+    int row;
+    int column;
 
-  lcdvdbg("%s:\n", msg);
-  lcdvdbg("  currow: %d curcol: %d\n",
-          g_lcd1602.currow, g_lcd1602.curcol);
+    lcdvdbg("%s:\n", msg);
+    lcdvdbg("  currow: %d curcol: %d\n",
+            g_lcd1602.currow, g_lcd1602.curcol);
 
-  for (row = 0, column = 0; row < LCD_NROWS; )
+    for (row = 0, column = 0; row < LCD_NROWS; )
     {
-      ch = lcd_readch(row, column);
-      buffer[column] = isprint(ch) ? ch : '.';
-      if (++column >= LCD_NCOLUMNS)
+        ch = lcd_readch(row, column);
+        buffer[column] = isprint(ch) ? ch : '.';
+        if (++column >= LCD_NCOLUMNS)
         {
-          lcdvdbg("  [%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c]\n",
-                  buffer[0],  buffer[1],  buffer[2],  buffer[3],
-                  buffer[4],  buffer[5],  buffer[6],  buffer[7],
-                  buffer[8],  buffer[9],  buffer[10], buffer[11],
-                  buffer[12], buffer[13], buffer[14], buffer[15]);
+            lcdvdbg("  [%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c]\n",
+                    buffer[0],  buffer[1],  buffer[2],  buffer[3],
+                    buffer[4],  buffer[5],  buffer[6],  buffer[7],
+                    buffer[8],  buffer[9],  buffer[10], buffer[11],
+                    buffer[12], buffer[13], buffer[14], buffer[15]);
 
-          column = 0;
-          row++;
+            column = 0;
+            row++;
         }
     }
 }
@@ -297,10 +290,10 @@ static void lcd_dumpstate(FAR const char *msg)
 static void lcd_dumpstream(FAR const char *msg,
                            FAR const struct lcd_instream_s *stream)
 {
-  lcdvdbg("%s:\n", msg);
-  lcdvdbg("  nget: %d nbytes: %d\n",
-          stream->stream.nget, stream->nbytes);
-  lib_dumpbuffer("STREAM", stream->buffer, stream->nbytes);
+    lcdvdbg("%s:\n", msg);
+    lcdvdbg("  nget: %d nbytes: %d\n",
+            stream->stream.nget, stream->nbytes);
+    lib_dumpbuffer("STREAM", stream->buffer, stream->nbytes);
 }
 #endif
 
@@ -314,17 +307,17 @@ static void lcd_dumpstream(FAR const char *msg,
 
 static int lcd_getstream(FAR struct lib_instream_s *instream)
 {
-  FAR struct lcd_instream_s *lcdstream = (FAR struct lcd_instream_s *)instream;
+    FAR struct lcd_instream_s *lcdstream = (FAR struct lcd_instream_s *)instream;
 
-  DEBUGASSERT(lcdstream && lcdstream->buffer);
-  if (lcdstream->nbytes > 0)
+    DEBUGASSERT(lcdstream && lcdstream->buffer);
+    if (lcdstream->nbytes > 0)
     {
-      lcdstream->nbytes--;
-      lcdstream->stream.nget++;
-      return (int)*lcdstream->buffer++;
+        lcdstream->nbytes--;
+        lcdstream->stream.nget++;
+        return (int)*lcdstream->buffer++;
     }
 
-  return EOF;
+    return EOF;
 }
 
 /****************************************************************************
@@ -344,31 +337,33 @@ static void lcd_write_byte(int rw, uint8_t data)
 
     /* And write the high nibble command to the data out register */
 
-    putreg32((uint32_t)((data & 0xf0) >> 4), STM32_GPIOC_BSRR);
+    putreg32(0x000f0000, STM32_GPIOA_BSRR); /* set all pins to zero */
+    putreg32((uint32_t)((data & 0xf0) >> 4), STM32_GPIOA_BSRR);
 
     /* delay for enable */
 
-    delay(60);
+    delay(100);
     stm32_gpiowrite(GPIO_LCD_E, 1);
 
     /* delay then disable */
 
-    delay(450);
-    stm32_gpiowrite(GPIO_LCE_E, 0);
+    delay(300);
+    stm32_gpiowrite(GPIO_LCD_E, 0);
 
     /* write the low nibble command to the data out register */
 
-    putreg32((uint32_t)(data & 0xf), STM32_GPIOC_BSRR);
+    putreg32(0x000f0000, STM32_GPIOA_BSRR); /* set all pins to zero */
+    putreg32((uint32_t)(data & 0xf), STM32_GPIOA_BSRR);
 
     /* delay for enable */
 
-    delay(550);
+    delay(100);
     stm32_gpiowrite(GPIO_LCD_E, 1);
 
     /* delay then disable */
 
-    delay(450);
-    stm32_gpiowrite(GPIO_LCE_E, 0);
+    delay(300);
+    stm32_gpiowrite(GPIO_LCD_E, 0);
 }
 
 /****************************************************************************
@@ -415,30 +410,32 @@ static uint8_t lcd_rddata(void)
     stm32_gpiowrite(GPIO_LCD_RW, 1);
 
     /* enable */
-    stm32_gpiowrite(GPIO_LCD_E, 1);
 
-    /* delay */
+    delay(100);
+    stm32_gpiowrite(GPIO_LCD_E, 1);
 
     /* And read the high nibble from register */
 
-    data = (getreg32(STM32_GPIOC_IDR) & 0xf) << 4;
+    delay(300);
+    data = (getreg32(STM32_GPIOA_IDR) & 0xf) << 4;
 
     /* drop E */
 
-    stm32_gpiowrite(GPIO_LCE_E, 0);
-
-    /* delay */
+    stm32_gpiowrite(GPIO_LCD_E, 0);
 
     /* enable */
+
+    delay(200);
     stm32_gpiowrite(GPIO_LCD_E, 1);
 
-    /* delay */
-    
     /* read the low nibble from register */
-    data |= (getreg32(STM32_GPIOC_IDR) & 0xf);
+
+    delay(300);
+    data |= (getreg32(STM32_GPIOA_IDR) & 0xf);
 
     /* drop E */
-    stm32_gpiowrite(GPIO_LCE_E, 0);
+
+    stm32_gpiowrite(GPIO_LCD_E, 0);
 
     return (uint8_t)data;
 }
@@ -449,27 +446,27 @@ static uint8_t lcd_rddata(void)
 
 static uint8_t lcd_readch(uint8_t row, uint8_t column)
 {
-  uint8_t addr;
+    uint8_t addr;
 
-  /* Set the cursor position.  Internally, the HD44780U supports a display
-   * size of up to 2x40 addressed as follows:
-   *
-   * Column  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 ... 39
-   * Row 0  00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f ... 27
-   * Ro1 1  40 41 42 43 44 45 46 47 48 49 4a 4b 4c 4d 4e 4f ... 67
-  */
+    /* Set the cursor position.  Internally, the HD44780U supports a display
+     * size of up to 2x40 addressed as follows:
+     *
+     * Column  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 ... 39
+     * Row 0  00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f ... 27
+     * Ro1 1  40 41 42 43 44 45 46 47 48 49 4a 4b 4c 4d 4e 4f ... 67
+     */
 
-  addr = column;
-  if (row > 0)
+    addr = column;
+    if (row > 0)
     {
-      addr |= HD4478OU_DDRAM_ROW1;
+        addr |= HD4478OU_DDRAM_ROW1;
     }
 
-  lcd_wrcommand(HD4478OU_DDRAM_AD(addr));
+    lcd_wrcommand(HD4478OU_DDRAM_AD(addr));
 
-  /* And write the character here */
+    /* And write the character here */
 
-  return lcd_rddata();
+    return lcd_rddata();
 }
 
 /****************************************************************************
@@ -478,27 +475,27 @@ static uint8_t lcd_readch(uint8_t row, uint8_t column)
 
 static void lcd_writech(uint8_t ch, uint8_t row, uint8_t column)
 {
-  uint8_t addr;
+    uint8_t addr;
 
-  /* Set the cursor position.  Internally, the HD44780U supports a display
-   * size of up to 2x40 addressed as follows:
-   *
-   * Column  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 ... 39
-   * Row 0  00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f ... 27
-   * Ro1 1  40 41 42 43 44 45 46 47 48 49 4a 4b 4c 4d 4e 4f ... 67
-  */
+    /* Set the cursor position.  Internally, the HD44780U supports a display
+     * size of up to 2x40 addressed as follows:
+     *
+     * Column  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 ... 39
+     * Row 0  00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f ... 27
+     * Ro1 1  40 41 42 43 44 45 46 47 48 49 4a 4b 4c 4d 4e 4f ... 67
+     */
 
-  addr = column;
-  if (row > 0)
+    addr = column;
+    if (row > 0)
     {
-      addr |= HD4478OU_DDRAM_ROW1;
+        addr |= HD4478OU_DDRAM_ROW1;
     }
 
-  lcd_wrcommand(HD4478OU_DDRAM_AD(addr));
+    lcd_wrcommand(HD4478OU_DDRAM_AD(addr));
 
-  /* And write the character here */
+    /* And write the character here */
 
-  lcd_wrdata(ch);
+    lcd_wrdata(ch);
 }
 
 /****************************************************************************
@@ -507,10 +504,10 @@ static void lcd_writech(uint8_t ch, uint8_t row, uint8_t column)
 
 static void lcd_appendch(uint8_t ch)
 {
-  if (g_lcd1602.curcol < LCD_NCOLUMNS)
+    if (g_lcd1602.curcol < LCD_NCOLUMNS)
     {
-      lcd_writech(ch, g_lcd1602.currow, g_lcd1602.curcol);
-      g_lcd1602.curcol++;
+        lcd_writech(ch, g_lcd1602.currow, g_lcd1602.curcol);
+        g_lcd1602.curcol++;
     }
 }
 
@@ -520,43 +517,43 @@ static void lcd_appendch(uint8_t ch)
 
 static void lcd_action(enum slcdcode_e code, uint8_t count)
 {
-  lcdvdbg("Action: %d count: %d\n", code, count);
-  lcd_dumpstate("BEFORE ACTION");
+    lcdvdbg("Action: %d count: %d\n", code, count);
+    lcd_dumpstate("BEFORE ACTION");
 
-  switch (code)
+    switch (code)
     {
-      /* Erasure */
+        /* Erasure */
 
-      case SLCDCODE_BACKDEL:         /* Backspace (backward delete) N characters */
+    case SLCDCODE_BACKDEL:         /* Backspace (backward delete) N characters */
+    {
+        int tmp;
+
+        /* If we are at the home position or if the count is zero, then ignore the action */
+
+        if (g_lcd1602.curcol < 1 || count < 1)
         {
-          int tmp;
+            break;
+        }
 
-          /* If we are at the home position or if the count is zero, then ignore the action */
+        /* Otherwise, BACKDEL is like moving the cursor back N characters then doing a
+         * forward deletion.  Decrement the cursor position and fall through.
+         */
 
-          if (g_lcd1602.curcol < 1 || count < 1)
-            {
-              break;
-            }
+        tmp = (int)g_lcd1602.curcol - count;
+        if (tmp < 0)
+        {
+            tmp   = 0;
+            count = g_lcd1602.curcol;
+        }
 
-          /* Otherwise, BACKDEL is like moving the cursor back N characters then doing a
-           * forward deletion.  Decrement the cursor position and fall through.
-           */
+        /* Save the updated cursor positions */
 
-           tmp = (int)g_lcd1602.curcol - count;
-           if (tmp < 0)
-             {
-               tmp   = 0;
-               count = g_lcd1602.curcol;
-             }
+        g_lcd1602.curcol = tmp;
+    }
 
-           /* Save the updated cursor positions */
-
-           g_lcd1602.curcol = tmp;
-         }
-
-      case SLCDCODE_FWDDEL:          /* DELete (forward delete) N characters moving text */
+    case SLCDCODE_FWDDEL:          /* DELete (forward delete) N characters moving text */
         if (count > 0)
-          {
+        {
             int nchars;
             int nmove;
             int i;
@@ -572,23 +569,23 @@ static void lcd_action(enum slcdcode_e code, uint8_t count)
             /* Move all characters after the current cursor position left by 'nmove' characters */
 
             for (i = g_lcd1602.curcol + nmove; i < LCD_NCOLUMNS - 1; i++)
-              {
+            {
                 uint8_t ch = lcd_readch(g_lcd1602.currow, i);
                 lcd_writech(ch, g_lcd1602.currow, i - nmove);
-              }
+            }
 
             /* Erase the last 'nmove' characters on the display */
 
             for (i = LCD_NCOLUMNS - nmove; i < LCD_NCOLUMNS; i++)
-              {
+            {
                 lcd_writech(' ', i, 0);
-              }
-          }
+            }
+        }
         break;
 
-      case SLCDCODE_ERASE:           /* Erase N characters from the cursor position */
+    case SLCDCODE_ERASE:           /* Erase N characters from the cursor position */
         if (count > 0)
-          {
+        {
             int last;
             int i;
 
@@ -598,147 +595,147 @@ static void lcd_action(enum slcdcode_e code, uint8_t count)
 
             last = g_lcd1602.curcol + count - 1;
             if (last >= LCD_NCOLUMNS)
-              {
+            {
                 last = LCD_NCOLUMNS - 1;
-              }
+            }
 
             /* Erase N characters after the current cursor position left by one */
 
             for (i = g_lcd1602.curcol; i < last; i++)
-              {
+            {
                 lcd_writech(' ', g_lcd1602.currow, i);
-              }
-          }
-        break;
-
-      case SLCDCODE_CLEAR:           /* Home the cursor and erase the entire display */
-        {
-          /* Clear the display */
-
-          lcd_wrcommand(HD4478OU_CLEAR);
-
-          /* And home the cursor */
-
-          g_lcd1602.currow = 0;
-          g_lcd1602.curcol = 0;
-        }
-        break;
-
-      case SLCDCODE_ERASEEOL:        /* Erase from the cursor position to the end of line */
-        {
-          int i;
-
-          /* Erase characters after the current cursor position to the end of the line */
-
-          for (i = g_lcd1602.curcol; i < LCD_NCOLUMNS; i++)
-            {
-              lcd_writech(' ', g_lcd1602.currow, i);
             }
         }
         break;
 
-      /* Cursor movement */
+    case SLCDCODE_CLEAR:           /* Home the cursor and erase the entire display */
+    {
+        /* Clear the display */
 
-      case SLCDCODE_HOME:            /* Cursor home */
+        lcd_wrcommand(HD4478OU_CLEAR);
+
+        /* And home the cursor */
+
+        g_lcd1602.currow = 0;
+        g_lcd1602.curcol = 0;
+    }
+    break;
+
+    case SLCDCODE_ERASEEOL:        /* Erase from the cursor position to the end of line */
+    {
+        int i;
+
+        /* Erase characters after the current cursor position to the end of the line */
+
+        for (i = g_lcd1602.curcol; i < LCD_NCOLUMNS; i++)
         {
-          g_lcd1602.currow = 0;
-          g_lcd1602.curcol = 0;
+            lcd_writech(' ', g_lcd1602.currow, i);
         }
-        break;
+    }
+    break;
 
-      case SLCDCODE_END:             /* Cursor end */
+    /* Cursor movement */
+
+    case SLCDCODE_HOME:            /* Cursor home */
+    {
+        g_lcd1602.currow = 0;
+        g_lcd1602.curcol = 0;
+    }
+    break;
+
+    case SLCDCODE_END:             /* Cursor end */
+    {
+        g_lcd1602.curcol = LCD_NCOLUMNS - 1;
+    }
+    break;
+
+    case SLCDCODE_LEFT:            /* Cursor left by N characters */
+    {
+        int tmp = (int)g_lcd1602.curcol - count;
+
+        /* Don't permit movement past the beginning of the SLCD */
+
+        if (tmp < 0)
         {
-          g_lcd1602.curcol = LCD_NCOLUMNS - 1;
+            tmp = 0;
         }
-        break;
 
-      case SLCDCODE_LEFT:            /* Cursor left by N characters */
+        /* Save the new cursor position */
+
+        g_lcd1602.curcol = (uint8_t)tmp;
+    }
+    break;
+
+    case SLCDCODE_RIGHT:           /* Cursor right by N characters */
+    {
+        int tmp = (int)g_lcd1602.curcol + count;
+
+        /* Don't permit movement past the end of the SLCD */
+
+        if (tmp >= LCD_NCOLUMNS)
         {
-          int tmp = (int)g_lcd1602.curcol - count;
-
-          /* Don't permit movement past the beginning of the SLCD */
-
-          if (tmp < 0)
-            {
-              tmp = 0;
-            }
-
-          /* Save the new cursor position */
-
-          g_lcd1602.curcol = (uint8_t)tmp;
+            tmp = LCD_NCOLUMNS - 1;
         }
-        break;
 
-      case SLCDCODE_RIGHT:           /* Cursor right by N characters */
+        /* Save the new cursor position */
+
+        g_lcd1602.curcol = (uint8_t)tmp;
+    }
+    break;
+
+    case SLCDCODE_UP:              /* Cursor up by N lines */
+    {
+        int tmp = (int)g_lcd1602.currow - count;
+
+        /* Don't permit movement past the top of the SLCD */
+
+        if (tmp < 0)
         {
-          int tmp = (int)g_lcd1602.curcol + count;
-
-          /* Don't permit movement past the end of the SLCD */
-
-          if (tmp >= LCD_NCOLUMNS)
-            {
-              tmp = LCD_NCOLUMNS - 1;
-            }
-
-          /* Save the new cursor position */
-
-          g_lcd1602.curcol = (uint8_t)tmp;
+            tmp = 0;
         }
-        break;
 
-      case SLCDCODE_UP:              /* Cursor up by N lines */
+        /* Save the new cursor position */
+
+        g_lcd1602.currow = (uint8_t)tmp;
+    }
+    break;
+
+    case SLCDCODE_DOWN:            /* Cursor down by N lines */
+    {
+        int tmp = (int)g_lcd1602.currow + count;
+
+        /* Don't permit movement past the bottom of the SLCD */
+
+        if (tmp >= LCD_NROWS)
         {
-          int tmp = (int)g_lcd1602.currow - count;
-
-          /* Don't permit movement past the top of the SLCD */
-
-          if (tmp < 0)
-            {
-              tmp = 0;
-            }
-
-          /* Save the new cursor position */
-
-          g_lcd1602.currow = (uint8_t)tmp;
+            tmp = LCD_NROWS - 1;
         }
-        break;
 
-      case SLCDCODE_DOWN:            /* Cursor down by N lines */
-        {
-          int tmp = (int)g_lcd1602.currow + count;
+        /* Save the new cursor position */
 
-          /* Don't permit movement past the bottom of the SLCD */
+        g_lcd1602.currow = (uint8_t)tmp;
+    }
+    break;
 
-          if (tmp >= LCD_NROWS)
-            {
-              tmp = LCD_NROWS - 1;
-            }
-
-          /* Save the new cursor position */
-
-          g_lcd1602.currow = (uint8_t)tmp;
-        }
-        break;
-
-      case SLCDCODE_PAGEUP:          /* Cursor up by N pages */
-      case SLCDCODE_PAGEDOWN:        /* Cursor down by N pages */
+    case SLCDCODE_PAGEUP:          /* Cursor up by N pages */
+    case SLCDCODE_PAGEDOWN:        /* Cursor down by N pages */
         break;                       /* Not supportable on this SLCD */
 
-      /* Blinking */
+        /* Blinking */
 
-      case SLCDCODE_BLINKSTART:      /* Start blinking with current cursor position */
-      case SLCDCODE_BLINKEND:        /* End blinking after the current cursor position */
-      case SLCDCODE_BLINKOFF:        /* Turn blinking off */
+    case SLCDCODE_BLINKSTART:      /* Start blinking with current cursor position */
+    case SLCDCODE_BLINKEND:        /* End blinking after the current cursor position */
+    case SLCDCODE_BLINKOFF:        /* Turn blinking off */
         break;                       /* Not implemented */
 
-      /* These are actually unreportable errors */
+        /* These are actually unreportable errors */
 
-      default:
-      case SLCDCODE_NORMAL:          /* Not a special keycode */
+    default:
+    case SLCDCODE_NORMAL:          /* Not a special keycode */
         break;
     }
 
-  lcd_dumpstate("AFTER ACTION");
+    lcd_dumpstate("AFTER ACTION");
 }
 
 /****************************************************************************
@@ -747,32 +744,32 @@ static void lcd_action(enum slcdcode_e code, uint8_t count)
 
 static ssize_t lcd_read(FAR struct file *filep, FAR char *buffer, size_t len)
 {
-  uint8_t row;
-  uint8_t column;
-  int nread;
+    uint8_t row;
+    uint8_t column;
+    int nread;
 
-  /* Try to read the entire display.  Notice that the seek offset
-   * (filep->f_pos) is ignored.  It probably should be taken into account
-   * and also updated after each read and write.
-   */
+    /* Try to read the entire display.  Notice that the seek offset
+     * (filep->f_pos) is ignored.  It probably should be taken into account
+     * and also updated after each read and write.
+     */
 
-  row    = 0;
-  column = 0;
+    row    = 0;
+    column = 0;
 
-  for (nread = 0; nread < len; nread++)
+    for (nread = 0; nread < len; nread++)
     {
-      *buffer++ = lcd_readch(row, column);
-      if (++column >= LCD_NCOLUMNS)
+        *buffer++ = lcd_readch(row, column);
+        if (++column >= LCD_NCOLUMNS)
         {
-          column = 0;
-          if (++row >= LCD_NROWS)
+            column = 0;
+            if (++row >= LCD_NROWS)
             {
-              break;
+                break;
             }
         }
     }
 
-  return nread;
+    return nread;
 }
 
 /****************************************************************************
@@ -782,82 +779,82 @@ static ssize_t lcd_read(FAR struct file *filep, FAR char *buffer, size_t len)
 static ssize_t lcd_write(FAR struct file *filep,  FAR const char *buffer,
                          size_t len)
 {
-  struct lcd_instream_s instream;
-  struct slcdstate_s state;
-  enum slcdret_e result;
-  uint8_t ch;
-  uint8_t count;
+    struct lcd_instream_s instream;
+    struct slcdstate_s state;
+    enum slcdret_e result;
+    uint8_t ch;
+    uint8_t count;
 
-  /* Initialize the stream for use with the SLCD CODEC */
+    /* Initialize the stream for use with the SLCD CODEC */
 
-  instream.stream.get  = lcd_getstream;
-  instream.stream.nget = 0;
-  instream.buffer      = buffer;
-  instream.nbytes      = len;
+    instream.stream.get  = lcd_getstream;
+    instream.stream.nget = 0;
+    instream.buffer      = buffer;
+    instream.nbytes      = len;
 
-  lcd_dumpstream("BEFORE WRITE", &instream);
+    lcd_dumpstream("BEFORE WRITE", &instream);
 
-  /* Now decode and process every byte in the input buffer */
+    /* Now decode and process every byte in the input buffer */
 
-  memset(&state, 0, sizeof(struct slcdstate_s));
-  while ((result = slcd_decode(&instream.stream, &state, &ch, &count)) != SLCDRET_EOF)
+    memset(&state, 0, sizeof(struct slcdstate_s));
+    while ((result = slcd_decode(&instream.stream, &state, &ch, &count)) != SLCDRET_EOF)
     {
-      lcdvdbg("slcd_decode returned result=%d char=%d count=%d\n",
-              result, ch, count);
+        lcdvdbg("slcd_decode returned result=%d char=%d count=%d\n",
+                result, ch, count);
 
-      if (result == SLCDRET_CHAR)          /* A normal character was returned */
+        if (result == SLCDRET_CHAR)          /* A normal character was returned */
         {
-          /* Check for ASCII control characters */
+            /* Check for ASCII control characters */
 
-          if (ch < ASCII_SPACE)
+            if (ch < ASCII_SPACE)
             {
-              /* All are ignored except for backspace and carriage return */
+                /* All are ignored except for backspace and carriage return */
 
-              if (ch == ASCII_BS)
+                if (ch == ASCII_BS)
                 {
-                  /* Perform the backward deletion */
+                    /* Perform the backward deletion */
 
-                  lcd_action(SLCDCODE_BACKDEL, 1);
+                    lcd_action(SLCDCODE_BACKDEL, 1);
                 }
-              else if (ch == ASCII_CR)
+                else if (ch == ASCII_CR)
                 {
-                  /* Perform the carriage return */
+                    /* Perform the carriage return */
 
-                  g_lcd1602.curcol = 0;
-                  lcd_action(SLCDCODE_DOWN, 1);
+                    g_lcd1602.curcol = 0;
+                    lcd_action(SLCDCODE_DOWN, 1);
                 }
             }
 
-          /* Handle ASCII_DEL */
+            /* Handle ASCII_DEL */
 
-          else if (ch == ASCII_DEL)
+            else if (ch == ASCII_DEL)
             {
-              /* Perform the forward deletion */
+                /* Perform the forward deletion */
 
-              lcd_action(SLCDCODE_FWDDEL, 1);
+                lcd_action(SLCDCODE_FWDDEL, 1);
             }
 
-          /* The rest of the 7-bit ASCII characters are fair game */
+            /* The rest of the 7-bit ASCII characters are fair game */
 
-          else if (ch < 128)
+            else if (ch < 128)
             {
-              /* Write the character if it valid */
+                /* Write the character if it valid */
 
-              lcd_appendch(ch);
+                lcd_appendch(ch);
             }
         }
-      else /* (result == SLCDRET_SPEC) */  /* A special SLCD action was returned */
+        else /* (result == SLCDRET_SPEC) */  /* A special SLCD action was returned */
         {
-          /* Then Perform the action */
+            /* Then Perform the action */
 
-          lcd_action((enum slcdcode_e)ch, count);
+            lcd_action((enum slcdcode_e)ch, count);
         }
     }
 
-  /* Assume that the entire input buffer was processed */
+    /* Assume that the entire input buffer was processed */
 
-  lcd_dumpstream("AFTER WRITE", &instream);
-  return (ssize_t)len;
+    lcd_dumpstream("AFTER WRITE", &instream);
+    return (ssize_t)len;
 }
 
 /****************************************************************************
@@ -866,67 +863,67 @@ static ssize_t lcd_write(FAR struct file *filep,  FAR const char *buffer,
 
 static int lcd_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
 {
-  switch (cmd)
+    switch (cmd)
     {
 
-      /* SLCDIOC_GETATTRIBUTES:  Get the attributes of the SLCD
-       *
-       * argument:  Pointer to struct slcd_attributes_s in which values will be
-       *            returned
-       */
+        /* SLCDIOC_GETATTRIBUTES:  Get the attributes of the SLCD
+         *
+         * argument:  Pointer to struct slcd_attributes_s in which values will be
+         *            returned
+         */
 
-      case SLCDIOC_GETATTRIBUTES:
+    case SLCDIOC_GETATTRIBUTES:
+    {
+        FAR struct slcd_attributes_s *attr = (FAR struct slcd_attributes_s *)((uintptr_t)arg);
+
+        lcdvdbg("SLCDIOC_GETATTRIBUTES:\n");
+
+        if (!attr)
         {
-          FAR struct slcd_attributes_s *attr = (FAR struct slcd_attributes_s *)((uintptr_t)arg);
-
-          lcdvdbg("SLCDIOC_GETATTRIBUTES:\n");
-
-          if (!attr)
-            {
-              return -EINVAL;
-            }
-
-          attr->nrows         = LCD_NROWS;
-          attr->ncolumns      = LCD_NCOLUMNS;
-          attr->nbars         = 0;
-          attr->maxcontrast   = 0;
-          attr->maxbrightness = 0
+            return -EINVAL;
         }
-        break;
 
-      /* SLCDIOC_CURPOS:  Get the SLCD cursor positioni (rows x characters)
-       *
-       * argument:  Pointer to struct slcd_curpos_s in which values will be
-       *            returned
-       */
+        attr->nrows         = LCD_NROWS;
+        attr->ncolumns      = LCD_NCOLUMNS;
+        attr->nbars         = 0;
+        attr->maxcontrast   = 0;
+        attr->maxbrightness = 0;
+    }
+    break;
+
+    /* SLCDIOC_CURPOS:  Get the SLCD cursor positioni (rows x characters)
+     *
+     * argument:  Pointer to struct slcd_curpos_s in which values will be
+     *            returned
+     */
 
 
-      case SLCDIOC_CURPOS:
+    case SLCDIOC_CURPOS:
+    {
+        FAR struct slcd_curpos_s *curpos = (FAR struct slcd_curpos_s *)((uintptr_t)arg);
+
+        lcdvdbg("SLCDIOC_CURPOS: row=%d column=%d\n", g_lcd1602.currow, g_lcd1602.curcol);
+
+        if (!curpos)
         {
-          FAR struct slcd_curpos_s *curpos = (FAR struct slcd_curpos_s *)((uintptr_t)arg);
-
-          lcdvdbg("SLCDIOC_CURPOS: row=%d column=%d\n", g_lcd1602.currow, g_lcd1602.curcol);
-
-          if (!curpos)
-            {
-              return -EINVAL;
-            }
-
-          curpos->row    = g_lcd1602.currow;
-          curpos->column = g_lcd1602.curcol;
+            return -EINVAL;
         }
-        break;
 
-      case SLCDIOC_SETBAR:         /* SLCDIOC_SETBAR: Set bars on a bar display */
-      case SLCDIOC_GETCONTRAST:    /* SLCDIOC_GETCONTRAST: Get the current contrast setting */
-      case SLCDIOC_SETCONTRAST:    /* SLCDIOC_SETCONTRAST: Set the contrast to a new value */
-      case SLCDIOC_GETBRIGHTNESS:  /* Get the current brightness setting */
-      case SLCDIOC_SETBRIGHTNESS:  /* Set the brightness to a new value */
-      default:
+        curpos->row    = g_lcd1602.currow;
+        curpos->column = g_lcd1602.curcol;
+    }
+    break;
+
+    case SLCDIOC_SETBAR:         /* SLCDIOC_SETBAR: Set bars on a bar display */
+    case SLCDIOC_GETCONTRAST:    /* SLCDIOC_GETCONTRAST: Get the current contrast setting */
+    case SLCDIOC_SETCONTRAST:    /* SLCDIOC_SETCONTRAST: Set the contrast to a new value */
+    case SLCDIOC_GETBRIGHTNESS:  /* Get the current brightness setting */
+    case SLCDIOC_SETBRIGHTNESS:  /* Set the brightness to a new value */
+    default:
         return -ENOTTY;
     }
 
-  return OK;
+    return OK;
 }
 
 /****************************************************************************
@@ -935,19 +932,19 @@ static int lcd_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
 
 #ifndef CONFIG_DISABLE_POLL
 static int lcd_poll(FAR struct file *filep, FAR struct pollfd *fds,
-                        bool setup)
+                    bool setup)
 {
-  if (setup)
+    if (setup)
     {
-      /* Data is always available to be read */
+        /* Data is always available to be read */
 
-      fds->revents |= (fds->events & (POLLIN|POLLOUT));
-      if (fds->revents != 0)
+        fds->revents |= (fds->events & (POLLIN|POLLOUT));
+        if (fds->revents != 0)
         {
-          sem_post(fds->sem);
+            sem_post(fds->sem);
         }
     }
-  return OK;
+    return OK;
 }
 #endif
 
@@ -966,46 +963,49 @@ static int lcd_poll(FAR struct file *filep, FAR struct pollfd *fds,
 
 int up_lcd1602_initialize(void)
 {
-  uint32_t regval;
-  int ret = OK;
+    int ret = OK;
 
-  /* Only initialize the driver once. */
+    /* Only initialize the driver once. */
 
-  if (!g_lcd1602.initialized)
+    if (!g_lcd1602.initialized)
     {
-      lcdvdbg("Initializing\n");
+        lcdvdbg("Initializing\n");
 
-      /* Configure and enable the LCD */
-      /* Wait > 15 milliseconds afer Vdd > 4.5V */
+        /* Configure and enable the LCD */
+        /* Wait > 15 milliseconds afer Vdd > 4.5V */
 
-      up_mdelay(100);
+        up_mdelay(100);
 
-      /* Select the 8-bit interface. BF cannot be checked before this command.
-       * This needs to be done a few times with some magic delays.
-       */
+        /* Select the 4-bit interface. BF cannot be checked before this command.
+         * This needs to be done a few times with some magic delays.
+         */
 
-      lcd_wrcommand(HD4478OU_FUNC | HD4478OU_FUNC_DL8D | HD4478OU_FUNC_N1);
-      up_mdelay(50);
-      lcd_wrcommand(HD4478OU_FUNC | HD4478OU_FUNC_DL8D | HD4478OU_FUNC_N1);
-      up_udelay(50);
-      lcd_wrcommand(HD4478OU_FUNC | HD4478OU_FUNC_DL8D | HD4478OU_FUNC_N1);
-      lcd_wrcommand(HD4478OU_FUNC | HD4478OU_FUNC_DL8D | HD4478OU_FUNC_N1);
+        lcd_wrcommand(HD4478OU_FUNC | HD4478OU_FUNC_DL4D | HD4478OU_FUNC_N1);
+        up_mdelay(50);
+        lcd_wrcommand(HD4478OU_FUNC | HD4478OU_FUNC_DL4D | HD4478OU_FUNC_N1);
+        up_udelay(50);
+        lcd_wrcommand(HD4478OU_FUNC | HD4478OU_FUNC_DL4D | HD4478OU_FUNC_N1);
+        lcd_wrcommand(HD4478OU_FUNC | HD4478OU_FUNC_DL4D | HD4478OU_FUNC_N1);
 
-      /* Configure the display */
+        /* Configure the display */
 
-      lcd_wrcommand(HD4478OU_DISPLAY);                       /* Display, cursor, and blink off */
-      lcd_wrcommand(HD4478OU_CLEAR);                         /* Clear the display */
-      lcd_wrcommand(HD4478OU_INPUT | HD4478OU_INPUT_INCR);   /* Increment mode */
-      lcd_wrcommand(HD4478OU_DISPLAY | HD4478OU_DISPLAY_ON); /* Display on, cursor and blink off */
-      lcd_wrcommand(HD4478OU_DDRAM_AD(0));                   /* Select DDRAM RAM AD=0 */
+        lcd_wrcommand(HD4478OU_DISPLAY);                       /* Display, cursor, and blink off */
+        lcd_wrcommand(HD4478OU_CLEAR);                         /* Clear the display */
+        lcd_wrcommand(HD4478OU_INPUT | HD4478OU_INPUT_INCR);   /* Increment mode */
+        lcd_wrcommand(HD4478OU_DISPLAY | HD4478OU_DISPLAY_ON); /* Display on, cursor and blink off */
+        lcd_wrcommand(HD4478OU_DDRAM_AD(0));                   /* Select DDRAM RAM AD=0 */
 
-      /* Register the LCD device driver */
+        /* Register the LCD device driver */
 
-      ret = register_driver("/dev/lcd1602", &g_lcdops, 0644, &g_lcd1602);
-      g_lcd1602.initialized = true;
+        ret = register_driver("/dev/lcd1602", &g_lcdops, 0644, &g_lcd1602);
+        if (ret) {
+            lcdvdbg("Error registering lcd1602\n");
+        }
+        else
+            g_lcd1602.initialized = true;
     }
 
-  return ret;
+    return ret;
 }
 
 #endif /* CONFIG_LCD_LCD1602 */

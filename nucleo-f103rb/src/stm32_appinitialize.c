@@ -41,13 +41,8 @@
 
 #include <nuttx/config.h>
 
-#include <sys/types.h>
-
 #include <nuttx/board.h>
-#include <nuttx/lcd/hd44780u.h>
-#include <arch/board/board.h>
-
-#include "nucleo-f103rb.h"
+#include <nuttx/lcd/hd4478ou.h>
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -74,17 +69,11 @@ int board_app_initialize(void)
 {
     int ret = OK;
     
-    /* Configure on-board LEDs if LED support has been selected. */
-
-#ifdef CONFIG_ARCH_LEDS
-    board_autoled_initialize();
-#endif
-
     /* Initialize the LCD1602 and register the device as /dev/lcd1602 */
     
 #ifdef CONFIG_LCD_LCD1602
     ret = up_lcd1602_initialize();
 #endif
 
-    return OK;
+    return ret;
 }
