@@ -122,6 +122,9 @@
 #  define MAX(a,b) (a > b ? a : b)
 #endif
 
+/* NANO_DELAY_CNT macro to calculate loop count for nanosecond delays *******/
+#define NANO_DELAY_CNT(x) ((x * CONFIG_BOARD_LOOPSPERMSEC)/1000)
+
 /* Pin configuration ********************************************************/
 /* PC0, RS -- High values selects data */
 
@@ -134,6 +137,10 @@
 /* PB0, E -- High values triggers lcd */
 
 #define GPIO_LCD_E   (GPIO_OUTPUT|GPIO_OUTPUT_CLEAR|GPIO_CNF_OUTPP|GPIO_MODE_50MHz|GPIO_PORTB|GPIO_PIN0)
+
+/* data port */
+#define GPIO_LCD_DATA_BSRR STM32_GPIOA_BSRR
+#define GPIO_LCD_DATA_IDR STM32_GPIOA_IDR
 
 /* LCD **********************************************************************/
 
@@ -239,11 +246,11 @@ static struct lcd1602_2 g_lcd1602;
 /****************************************************************************
  * Name: delay
  ****************************************************************************/
-static void delay(int nsecs)
+static void delay(int count)
 {
     volatile unsigned int i;
 
-    for (i=0; i<(nsecs*CONFIG_BOARD_LOOPSPERMSEC)/1000; i++) {
+    for (i=0; i<count; i++) {
     }
 }
 
@@ -337,32 +344,32 @@ static void lcd_write_byte(int rw, uint8_t data)
 
     /* And write the high nibble command to the data out register */
 
-    putreg32(0x000f0000, STM32_GPIOA_BSRR); /* set all pins to zero */
-    putreg32((uint32_t)((data & 0xf0) >> 4), STM32_GPIOA_BSRR);
+    putreg32(0x000f0000, GPIO_LCD_DATA_BSRR); /* set all pins to zero */
+    putreg32((uint32_t)((data & 0xf0) >> 4), GPIO_LCD_DATA_BSRR);
 
     /* delay for enable */
 
-    delay(100);
+    delay(NANO_DELAY_CNT(100));
     stm32_gpiowrite(GPIO_LCD_E, 1);
 
     /* delay then disable */
 
-    delay(300);
+    delay(NANO_DELAY_CNT(300));
     stm32_gpiowrite(GPIO_LCD_E, 0);
 
     /* write the low nibble command to the data out register */
 
-    putreg32(0x000f0000, STM32_GPIOA_BSRR); /* set all pins to zero */
-    putreg32((uint32_t)(data & 0xf), STM32_GPIOA_BSRR);
+    putreg32(0x000f0000, GPIO_LCD_DATA_BSRR); /* set all pins to zero */
+    putreg32((uint32_t)(data & 0xf), GPIO_LCD_DATA_BSRR);
 
     /* delay for enable */
 
-    delay(100);
+    delay(NANO_DELAY_CNT(100));
     stm32_gpiowrite(GPIO_LCD_E, 1);
 
     /* delay then disable */
 
-    delay(300);
+    delay(NANO_DELAY_CNT(300));
     stm32_gpiowrite(GPIO_LCD_E, 0);
 }
 
@@ -411,13 +418,13 @@ static uint8_t lcd_rddata(void)
 
     /* enable */
 
-    delay(100);
+    delay(NANO_DELAY_CNT(100));
     stm32_gpiowrite(GPIO_LCD_E, 1);
 
     /* And read the high nibble from register */
 
-    delay(300);
-    data = (getreg32(STM32_GPIOA_IDR) & 0xf) << 4;
+    delay(NANO_DELAY_CNT(300));
+    data = (getreg32(GPIO_LCD_DATA_IDR) & 0xf) << 4;
 
     /* drop E */
 
@@ -425,13 +432,13 @@ static uint8_t lcd_rddata(void)
 
     /* enable */
 
-    delay(200);
+    delay(NANO_DELAY_CNT(200));
     stm32_gpiowrite(GPIO_LCD_E, 1);
 
     /* read the low nibble from register */
 
-    delay(300);
-    data |= (getreg32(STM32_GPIOA_IDR) & 0xf);
+    delay(NANO_DELAY_CNT(300));
+    data |= (getreg32(GPIO_LCD_DATA_IDR) & 0xf);
 
     /* drop E */
 
@@ -1001,8 +1008,6 @@ int up_lcd1602_initialize(void)
         if (ret) {
             lcdvdbg("Error registering lcd1602\n");
         }
-        else
-            g_lcd1602.initialized = true;
     }
 
     return ret;
