@@ -138,6 +138,17 @@
 
 #define GPIO_LCD_E   (GPIO_OUTPUT|GPIO_OUTPUT_CLEAR|GPIO_CNF_OUTPP|GPIO_MODE_50MHz|GPIO_PORTB|GPIO_PIN0)
 
+/* databus pins - using 4 bit databus */
+
+#define GPIO_LCD_DB7 (GPIO_OUTPUT|GPIO_OUTPUT_CLEAR|GPIO_CNF_OUTPP|GPIO_MODE_50MHz|GPIO_PORTA|GPIO_PIN3)
+
+#define GPIO_LCD_DB6 (GPIO_OUTPUT|GPIO_OUTPUT_CLEAR|GPIO_CNF_OUTPP|GPIO_MODE_50MHz|GPIO_PORTA|GPIO_PIN2)
+
+#define GPIO_LCD_DB5 (GPIO_OUTPUT|GPIO_OUTPUT_CLEAR|GPIO_CNF_OUTPP|GPIO_MODE_50MHz|GPIO_PORTA|GPIO_PIN1)
+
+#define GPIO_LCD_DB4 (GPIO_OUTPUT|GPIO_OUTPUT_CLEAR|GPIO_CNF_OUTPP|GPIO_MODE_50MHz|GPIO_PORTA|GPIO_PIN0)
+
+
 /* data port */
 #define GPIO_LCD_DATA_BSRR STM32_GPIOA_BSRR
 #define GPIO_LCD_DATA_IDR STM32_GPIOA_IDR
@@ -978,6 +989,18 @@ int up_lcd1602_initialize(void)
     {
         lcdvdbg("Initializing\n");
 
+        /* configure the gpio pins */
+        stm32_configgpio(GPIO_LCD_RS);
+        stm32_configgpio(GPIO_LCD_E);
+        stm32_configgpio(GPIO_LCD_RW);
+        stm32_configgpio(GPIO_LCD_DB7);
+        stm32_configgpio(GPIO_LCD_DB6);
+        stm32_configgpio(GPIO_LCD_DB5);
+        stm32_configgpio(GPIO_LCD_DB4);
+
+        stm32_gpiowrite(GPIO_LCD_RW, 1);
+        stm32_gpiowrite(GPIO_LCD_RS, 1);
+        
         /* Configure and enable the LCD */
         /* Wait > 15 milliseconds afer Vdd > 4.5V */
 
