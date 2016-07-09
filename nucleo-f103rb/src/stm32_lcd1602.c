@@ -47,17 +47,17 @@
  *                                      1.  Vss    --> Powerpoint GND
  *                                      2.  Vdd    --> Powerpoint USB+5V
  *                                      3.  Vo     N/C To ground via 10K potentiometer (Contrast)
- *   26  PB0/ADC12_IN8/TIM3_CH3         4.  RS      34 PB0, Selects registers
- *   20  PA4/SPI1_NSS/USART2_CK         5.  RW      32 PA4, Selects read or write
- *   15  PA1/USART2_RTS/ADC12_IN1       6.  E       30 PA1, Starts data read/write
+ *   26  PB0/ADC12_IN8/TIM3_CH3         4.  RS      38 PC0, Selects registers
+ *   20  PA4/SPI1_NSS/USART2_CK         5.  RW      36 PC1, Selects read or write
+ *   15  PA1/USART2_RTS/ADC12_IN1       6.  E       34 PB0, Starts data read/write
  *    8  PC0                            7.  N/C
  *    9  PC1                            8.  N/C
  *   10  PC2                            9.  N/C
  *   11  PC3                            10. N/C
- *                                      11. D4      38 PC0 
- *                                      12. D5      36 PC1 
- *                                      13. D6      35 PC2 
- *                                      14. D7      37 PC3 
+ *                                      11. D4      28 PA0 
+ *                                      12. D5      30 PA1 
+ *                                      13. D6      35 PA2 
+ *                                      14. D7      37 PA3 
  *                                      15. A      N/C To Vcc (5V) via 10K potentiometer (BKL)
  *                                      16. K      --> Powerpoint GND (BKL)
  *  ----------------------------------- ---------- ----------------------------------
